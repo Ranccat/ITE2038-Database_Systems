@@ -12,25 +12,30 @@ public class CalendarDB {
 
         try (Connection conn = DriverManager.getConnection(URL, USER, PW);
             PreparedStatement ps = conn.prepareStatement(SQL_INSERT)) {
+
             ps.setString(1, cal.getID());
             ps.setString(2, cal.getName());
             ps.setString(3, cal.getPW());
             ps.setString(4, cal.getChannel());
+
             ps.executeUpdate();
-            System.out.println("New Registration");
         }
         catch (SQLException e) {
             System.out.println(e.getMessage());
         }
     }
 
+    // Returning true if the id is not in use
     public static boolean IsValidUserID(String id)
     {
         String SQL_SELECT = "SELECT * FROM calendar";
 
         try (Connection conn = DriverManager.getConnection(URL, USER, PW);
         PreparedStatement ps = conn.prepareStatement(SQL_SELECT)) {
+
             ResultSet rs = ps.executeQuery();
+
+            // return false if the id is in result set
             while (rs.next()) {
                 if (rs.getString("userID").equals(id)) {
                     return false;
@@ -50,14 +55,15 @@ public class CalendarDB {
 
         try (Connection conn = DriverManager.getConnection(URL, USER, PW);
         PreparedStatement ps = conn.prepareStatement(SQL_UPDATE)) {
+
             ps.setString(1, newCal.userID);
             ps.setString(2, newCal.userName);
             ps.setString(3, newCal.userPW);
             ps.setString(4, oldCal.userID);
             ps.setString(5, oldCal.userName);
             ps.setString(6, oldCal.userPW);
+
             ps.executeUpdate();
-            System.out.println("Updated user info");
         }
         catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -70,7 +76,10 @@ public class CalendarDB {
 
         try (Connection conn = DriverManager.getConnection(URL, USER, PW);
              PreparedStatement ps = conn.prepareStatement(SQL_SELECT)) {
+
             ResultSet rs = ps.executeQuery();
+
+            // Finding user that matches login info
             while (rs.next()) {
                 if (rs.getString("userID").equals(id) && rs.getString("userPW").equals(pw)) {
                     Calendar cal = new Calendar();
@@ -97,6 +106,7 @@ public class CalendarDB {
 
         try (Connection conn = DriverManager.getConnection(URL, USER, PW);
              PreparedStatement ps = conn.prepareStatement(SQL_SELECT)) {
+
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {

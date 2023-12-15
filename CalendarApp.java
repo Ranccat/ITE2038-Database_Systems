@@ -4,10 +4,8 @@ import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.util.Collections;
+import java.util.*;
 import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
 
 public class CalendarApp {
     static Map<Integer, List<Event>> eventsByDay;
@@ -48,6 +46,8 @@ public class CalendarApp {
 
     private static void ShowMonth(LocalDate today)
     {
+        Server.DeleteStartedEvents();
+
         // New Frame
         JFrame frame = new JFrame("Calendar");
         frame.setSize(800, 600);
@@ -72,7 +72,7 @@ public class CalendarApp {
             monthPanel.add(dayButton);
         }
         // Fill In Empty Buttons at top
-        int blankCount = 35;
+        int blankCount = 42;
         if (startDay.getValue() != 7) {
             for (int i = 1; i <= startDay.getValue(); i++) {
                 monthPanel.add(new JPanel());
@@ -114,16 +114,20 @@ public class CalendarApp {
         currentMonthButton.setEnabled(false);
 
         // Bottom Menu: events
-        JPanel bottomMenuPanel = new JPanel(new GridLayout(1, 4));
+        JPanel bottomMenuPanel = new JPanel(new GridLayout(2, 3));
         frame.add(bottomMenuPanel, BorderLayout.SOUTH);
         JButton addEventButton = new JButton("Add Event");
         JButton searchEventButton = new JButton("Search Event");
         JButton checkScheduleButton = new JButton("Check Schedule");
         JButton updateUserButton = new JButton("Update User");
+        JButton viewChangeButton = new JButton("Week/Month");
+        JButton refreshButton = new JButton("Refresh");
         bottomMenuPanel.add(addEventButton);
         bottomMenuPanel.add(searchEventButton);
         bottomMenuPanel.add(checkScheduleButton);
         bottomMenuPanel.add(updateUserButton);
+        bottomMenuPanel.add(viewChangeButton);
+        bottomMenuPanel.add(refreshButton);
 
         //// Listeners ////
         // Go To Prev Month
@@ -147,14 +151,113 @@ public class CalendarApp {
         // Show Events
         updateUserButton.addActionListener(e -> ShowUpdateUser());
 
-        frame.setVisible(true);
+        viewChangeButton.addActionListener(e -> {
+            frame.dispose();
+            ShowWeek(today);
+        });
 
-        System.out.println("이번 달 개수: " + eventsByDay.size());
+        refreshButton.addActionListener(e -> {
+            frame.dispose();
+            ShowMonth(today);
+        });
+
+        frame.setVisible(true);
     }
 
     private static void ShowWeek(LocalDate today)
     {
+        Server.DeleteStartedEvents();
 
+        // New Frame
+        JFrame frame = new JFrame("Calendar");
+        frame.setSize(800, 300);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLayout(new BorderLayout());
+
+        // Dates
+        String[] daysOfWeek = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
+        String[] months = {"JAN", "FEB", "MAR", "APR", "MAY", "JUNE", "JULY", "AUG", "SEPT", "OCT", "NOV", "DEC"};
+        String currentMonthStr = months[today.getMonthValue() - 1];
+
+        // Month Panel
+        JPanel weekPanel = new JPanel(new GridLayout(2, 7));
+        frame.add(weekPanel, BorderLayout.CENTER);
+        // Add Days Of The Week
+        for (String dayOfWeek : daysOfWeek) {
+            JButton dayButton = new JButton(dayOfWeek);
+            dayButton.setEnabled(false);
+            weekPanel.add(dayButton);
+        }
+
+        // Add Days
+        LocalDate firstDayOfWeek = today.minusDays(today.getDayOfWeek().getValue());
+        for (int i = 0; i < 7; i++) {
+            JButton dayButton = new JButton(Integer.toString(firstDayOfWeek.getDayOfMonth()));
+            weekPanel.add(dayButton);
+            firstDayOfWeek = firstDayOfWeek.plusDays(1);
+        }
+
+        // Top Menu: current month & move to another month
+        JPanel topMenuPanel = new JPanel(new GridLayout(1, 3));
+        frame.add(topMenuPanel, BorderLayout.NORTH);
+        JButton prevWeekButton = new JButton("Prev Week");
+        JButton nextWeekButton = new JButton("Next Week");
+        JButton currentWeekButton = new JButton(today.getYear() + " " + currentMonthStr);
+
+        topMenuPanel.add(prevWeekButton);
+        topMenuPanel.add(currentWeekButton);
+        topMenuPanel.add(nextWeekButton);
+        currentWeekButton.setEnabled(false);
+
+        // Bottom Menu: events
+        JPanel bottomMenuPanel = new JPanel(new GridLayout(2, 3));
+        frame.add(bottomMenuPanel, BorderLayout.SOUTH);
+        JButton addEventButton = new JButton("Add Event");
+        JButton searchEventButton = new JButton("Search Event");
+        JButton checkScheduleButton = new JButton("Check Schedule");
+        JButton updateUserButton = new JButton("Update User");
+        JButton viewChangeButton = new JButton("Week/Month");
+        JButton refreshButton = new JButton("Refresh");
+        bottomMenuPanel.add(addEventButton);
+        bottomMenuPanel.add(searchEventButton);
+        bottomMenuPanel.add(checkScheduleButton);
+        bottomMenuPanel.add(updateUserButton);
+        bottomMenuPanel.add(viewChangeButton);
+        bottomMenuPanel.add(refreshButton);
+
+        //// Listeners ////
+        // Go To Prev Month
+        prevWeekButton.addActionListener(e -> {
+            LocalDate prevDay = today.minusWeeks(1);
+            frame.dispose();
+            ShowWeek(prevDay);
+        });
+        // Go To Next Month
+        nextWeekButton.addActionListener(e -> {
+            LocalDate nextDay = today.plusWeeks(1);
+            frame.dispose();
+            ShowWeek(nextDay);
+        });
+        // Add Event
+        addEventButton.addActionListener(e -> ShowAddEvent());
+        // Modify Event
+        searchEventButton.addActionListener(e -> ShowSearchEvent());
+        // Delete Event
+        checkScheduleButton.addActionListener(e -> ShowCheckSchedule());
+        // Show Events
+        updateUserButton.addActionListener(e -> ShowUpdateUser());
+
+        viewChangeButton.addActionListener(e -> {
+            frame.dispose();
+            ShowMonth(today);
+        });
+
+        refreshButton.addActionListener(e -> {
+            frame.dispose();
+            ShowMonth(today);
+        });
+
+        frame.setVisible(true);
     }
 
     private static void ShowDay(LocalDate today)
@@ -166,16 +269,114 @@ public class CalendarApp {
         List<Event> events = eventsByDay.get(today.getDayOfMonth());
 
         if (!(events == null)) {
-            String[] eventArray = events.toArray(new String[0]);
+            List<String> eventNames = new ArrayList<>();
+            for (Event event : events) {
+                eventNames.add(event.name);
+            }
+
+            String[] eventArray = eventNames.toArray(new String[0]);
             JList<String> stringJList = new JList<>(eventArray);
             JScrollPane scrollPane = new JScrollPane(stringJList);
             frame.add(scrollPane, BorderLayout.CENTER);
+
+            stringJList.addListSelectionListener(e -> {
+                if (!e.getValueIsAdjusting()) {
+                    String selectedEventName = stringJList.getSelectedValue();
+
+                    for (Event event : events) {
+                        if (event.name.equals(selectedEventName)) {
+                            ShowEventDetails(event);
+                        }
+                    }
+                }
+            });
         }
         else {
             JButton textButton = new JButton("No Event");
             textButton.setEnabled(false);
             frame.add(textButton, BorderLayout.CENTER);
         }
+
+        frame.setVisible(true);
+    }
+
+    private static void ShowEventDetails(Event event)
+    {
+        JFrame frame = new JFrame("Event Details");
+        frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        frame.setSize(600, 400);
+
+        JLabel nameLabel = new JLabel("Name:");
+        JTextField nameField = new JTextField(event.name);
+        JLabel descriptionLabel = new JLabel("Description:");
+        JTextField descriptionField = new JTextField(event.description);
+
+        JPanel detailPanel = new JPanel(new GridLayout(2, 2));
+        detailPanel.add(nameLabel);
+        detailPanel.add(nameField);
+        detailPanel.add(descriptionLabel);
+        detailPanel.add(descriptionField);
+
+        JButton changeButton = new JButton("Change");
+        JButton deleteButton = new JButton("Delete");
+        JButton closeButton = new JButton("Close");
+
+        JPanel menuPanel = new JPanel(new GridLayout(1, 3));
+        menuPanel.add(changeButton);
+        menuPanel.add(deleteButton);
+        menuPanel.add(closeButton);
+
+        frame.add(detailPanel, BorderLayout.CENTER);
+        frame.add(menuPanel, BorderLayout.SOUTH);
+
+        changeButton.addActionListener(e -> {
+            JFrame okFrame = new JFrame();
+            okFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+            okFrame.setSize(300, 150);
+
+            String newName = nameField.getText();
+            String newDescription = descriptionField.getText();
+
+            Server.ChangeEventDetails(event, newName, newDescription);
+
+            JButton textButton = new JButton("Event Details Changed");
+            textButton.setEnabled(false);
+            JButton okButton = new JButton("Confirm");
+
+            okFrame.add(textButton, BorderLayout.CENTER);
+            okFrame.add(okButton, BorderLayout.SOUTH);
+
+            okButton.addActionListener(okE -> {
+                okFrame.dispose();
+                frame.dispose();
+            });
+
+            okFrame.setVisible(true);
+        });
+
+        deleteButton.addActionListener(e -> {
+            JFrame okFrame = new JFrame();
+            okFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+            okFrame.setSize(300, 150);
+
+            Server.DeleteEvent(event);
+
+            JButton textButton = new JButton("Event Deleted");
+            textButton.setEnabled(false);
+            JButton okButton = new JButton("Confirm");
+
+            okFrame.add(textButton, BorderLayout.CENTER);
+            okFrame.add(okButton, BorderLayout.SOUTH);
+
+            okButton.addActionListener(okE -> {
+                okFrame.dispose();
+                frame.dispose();
+            });
+
+            okFrame.setVisible(true);
+        });
+
+        closeButton.addActionListener(e -> frame.dispose());
 
         frame.setVisible(true);
     }
@@ -267,6 +468,9 @@ public class CalendarApp {
 
     private static void ShowAddEvent()
     {
+        List<String> invited = new ArrayList<>();
+        invited.add(Server.myCalendar.userID);
+
         JFrame frame = new JFrame("Add Event");
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.setSize(600, 300);
@@ -313,11 +517,83 @@ public class CalendarApp {
         frame.add(confirmButton, BorderLayout.SOUTH);
 
         addMemberButton.addActionListener(e -> {
-            // TODO
+            JFrame inviteFrame = new JFrame();
+            inviteFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+            inviteFrame.setSize(400, 300);
+
+            JLabel memberNameLabel = new JLabel("ID:");
+            JTextField memberNameField = new JTextField();
+            JPanel memberPanel = new JPanel(new GridLayout(1, 2));
+            memberPanel.add(memberNameLabel);
+            memberPanel.add(memberNameField);
+            inviteFrame.add(memberPanel, BorderLayout.CENTER);
+
+            JButton inviteButton = new JButton("Invite");
+            inviteFrame.add(inviteButton, BorderLayout.SOUTH);
+
+            inviteButton.addActionListener(invE -> {
+                String id = memberNameField.getText();
+                if (Server.CheckExistingUser(id)) {
+                    invited.add(id);
+
+                    JFrame okFrame = new JFrame();
+                    okFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+                    okFrame.setSize(300, 150);
+
+                    JButton textButton = new JButton("Member Invited");
+                    textButton.setEnabled(false);
+                    okFrame.add(textButton, BorderLayout.CENTER);
+
+                    JButton okButton = new JButton("Confirm");
+                    okFrame.add(okButton, BorderLayout.SOUTH);
+
+                    okButton.addActionListener(okE -> {
+                        inviteFrame.dispose();
+                        okFrame.dispose();
+                    });
+
+                    okFrame.setVisible(true);
+                }
+                else {
+                    JFrame noFrame = new JFrame();
+                    noFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+                    noFrame.setSize(300, 150);
+
+                    JButton textButton = new JButton("Invalid User ID");
+                    textButton.setEnabled(false);
+                    noFrame.add(textButton, BorderLayout.CENTER);
+
+                    JButton retryButton = new JButton("Retry");
+                    noFrame.add(retryButton, BorderLayout.SOUTH);
+
+                    retryButton.addActionListener(noE -> {
+                        memberNameField.setText("");
+                        noFrame.dispose();
+                    });
+
+                    noFrame.setVisible(true);
+                }
+            });
+
+            inviteFrame.setVisible(true);
         });
 
         showMembersButton.addActionListener(e -> {
-            // TODO
+            JFrame listFrame = new JFrame();
+            listFrame.setSize(400, 300);
+            listFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+
+            String[] memberArray = invited.toArray(new String[0]);
+            JList<String> stringJList = new JList<>(memberArray);
+            JScrollPane scrollPane = new JScrollPane(stringJList);
+            listFrame.add(scrollPane, BorderLayout.CENTER);
+
+            JButton okButton = new JButton("OK");
+            listFrame.add(okButton, BorderLayout.SOUTH);
+
+            okButton.addActionListener(listE -> listFrame.dispose());
+
+            listFrame.setVisible(true);
         });
 
         confirmButton.addActionListener(e -> {
@@ -343,11 +619,7 @@ public class CalendarApp {
             String name = nameField.getText();
             String description = descriptionField.getText();
 
-            List<String> members = new ArrayList<>();
-            // TODO members 추가
-            members.add(Server.myCalendar.userID);
-
-            boolean check = Server.AddEvent(start, end, name, description, members);
+            boolean check = Server.AddEvent(start, end, name, description, invited);
 
             if(check) {
                 JFrame okFrame = new JFrame();
@@ -396,7 +668,50 @@ public class CalendarApp {
 
     private static void ShowSearchEvent()
     {
+        JFrame frame = new JFrame("Search Event");
+        frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        frame.setSize(300, 200);
 
+        JLabel inputLabel = new JLabel("Name or Description");
+        JTextField inputField = new JTextField();
+
+        JPanel inputPanel = new JPanel(new GridLayout(1, 2));
+        inputPanel.add(inputLabel);
+        inputPanel.add(inputField);
+
+        JButton findButton = new JButton("Search");
+        JButton closeButton = new JButton("Close");
+        JPanel menuPanel = new JPanel(new GridLayout(1, 2));
+        menuPanel.add(findButton);
+        menuPanel.add(closeButton);
+
+        frame.add(inputPanel, BorderLayout.CENTER);
+        frame.add(menuPanel, BorderLayout.SOUTH);
+
+        findButton.addActionListener(e -> {
+            JFrame listFrame = new JFrame();
+            listFrame.setSize(300, 500);
+            listFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+
+            String str = inputField.getText();
+            List<String> events = Server.FindEvents(str);
+
+            String[] eventArray = events.toArray(new String[0]);
+            JList<String> stringJList = new JList<>(eventArray);
+            JScrollPane scrollPane = new JScrollPane(stringJList);
+            listFrame.add(scrollPane, BorderLayout.CENTER);
+
+            JButton okButton = new JButton("Checked");
+            listFrame.add(okButton, BorderLayout.SOUTH);
+
+            okButton.addActionListener(okE -> listFrame.dispose());
+
+            listFrame.setVisible(true);
+        });
+
+        closeButton.addActionListener(e -> frame.dispose());
+
+        frame.setVisible(true);
     }
 
     private static void ShowCheckSchedule()

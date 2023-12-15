@@ -10,6 +10,7 @@ public class Server {
 
     public static boolean UserRegistration(String id, String name, String pw)
     {
+        // If ID is valid, make a new Calendar class and save it in Server
         boolean check = CalendarDB.IsValidUserID(id);
         if (check) {
             myCalendar = new Calendar();
@@ -25,12 +26,15 @@ public class Server {
 
     public static boolean UserLogin(String id, String pw)
     {
+        // Load the calendar from DB and save it in Server
         Calendar cal = CalendarDB.FindUser(id, pw);
         if (cal == null) {
             return false;
         }
-        myCalendar = cal;
-        return true;
+        else {
+            myCalendar = cal;
+            return true;
+        }
     }
 
     public static boolean UserUpdate(String name, String id, String pw)
@@ -89,6 +93,37 @@ public class Server {
 
     public static Map<Integer, List<Event>> GetEventsByDay(LocalDate today, String id)
     {
+        // Returning lists of Event for each day
         return EventDB.GetEventsOfMonth(today, id);
+    }
+
+    public static void ChangeEventDetails(Event event, String name, String description)
+    {
+        EventDB.UpdateEventDetails(event, name, description);
+    }
+
+    public static void DeleteStartedEvents()
+    {
+        EventDB.DeletePassedEvents();
+    }
+
+    public static void DeleteEvent(Event event)
+    {
+        if (myCalendar.userID.equals(event.ownerID)) {
+            EventDB.DeleteMyEvent(event.eventID);
+        }
+        else {
+            EventDB.DeleteOthersEvent(event.eventID, myCalendar.userID);
+        }
+    }
+
+    public static boolean CheckExistingUser(String id)
+    {
+        return !CalendarDB.IsValidUserID(id);
+    }
+
+    public static List<String> FindEvents(String str)
+    {
+        return EventDB.FindEvents(str, myCalendar.userID);
     }
 }
